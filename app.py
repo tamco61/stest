@@ -4,23 +4,31 @@ import json
 import numpy as np
 import pandas as pd
 from binance.client import Client
+import okx.MarketData as MarketData
 
-selected_coin = st.selectbox("Coin", options=["BTCUSDT", "ETHUSDT", "DOGEUSDT"])
+selected_coin = st.selectbox("Coin", options=["BTC-USDT", "ETH-USDT", "DOGE-USDT"])
+flag = "0"  # Production trading:0 , demo trading:1
+
+marketDataAPI =  MarketData.MarketAPI(flag=flag)
+
+# Retrieve history candlestick charts from recent years
+klines = marketDataAPI.get_history_candlesticks(
+    instId=selected_coin,
+    limit=100,
+    bar='1D'
+)['data'][::-1]
+
 
 COLOR_BULL = 'rgba(38,166,154,0.9)'  # #26a69a
 COLOR_BEAR = 'rgba(239,83,80,0.9)'   # #ef5350
 
-# Initialize Binance client
-client = Client()
 
 # Request historic pricing data via Binance API
-klines = client.get_historical_klines(selected_coin, Client.KLINE_INTERVAL_1DAY, "4 months ago UTC")
 df = pd.DataFrame(klines, columns=['Open Time', 'Open', 'High', 'Low', 'Close', 'Volume',
-                                    'Close Time', 'Quote Asset Volume', 'Number of Trades',
-                                    'Taker Buy Base Asset Volume', 'Taker Buy Quote Asset Volume', 'Ignore'])
+                                    'Close Time', 'Quote Asset Volume', 'Number of Trades'])
 
 # Data wrangling to match required format
-df['Open Time'] = pd.to_datetime(df['Open Time'], unit='ms')
+df['Open Time'] = pd.to_datetime(pd.to_numeric(df['Open Time']), unit='ms')
 df = df[['Open Time', 'Open', 'High', 'Low', 'Close', 'Volume']]
 df.columns = ['time', 'open', 'high', 'low', 'close', 'volume']  # rename columns
 df['time'] = df['time'].dt.strftime('%Y-%m-%d')  # Date to string
